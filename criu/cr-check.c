@@ -997,7 +997,7 @@ static int check_autofs(void)
 		goto close_pipe;
 	}
 
-	dir = mkdtemp(template);
+	dir = mkdtemp_1(template);
 	if (!dir) {
 		pr_perror("failed to construct temporary name");
 		goto free_options;

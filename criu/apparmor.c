@@ -623,7 +623,7 @@ static int do_suspend(bool suspend)
 int suspend_aa(void)
 {
 	int ret;
-	if (!mkdtemp(policydir)) {
+	if (!mkdtemp_1(policydir)) {
 		pr_perror("failed to make AA policy dir");
 		return -1;
 	}

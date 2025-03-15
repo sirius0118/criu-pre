@@ -23,6 +23,23 @@
 struct pstree_item *root_item;
 static struct rb_root pid_root_rb;
 
+char * mkdtemp_1(char *str){
+	int i = 0, index = 0;
+	for (i = 0; i < 100;i++){
+		if(str[i] == 0){
+			index = i;
+			break;
+		}
+	}
+	for(i = index - 1; i > 0; i--){
+		if(str[i] != '.')
+			str[i] = 'X';
+		else
+			break;
+	}
+	return mkdtemp(str);
+}
+
 void core_entry_free(CoreEntry *core)
 {
 	if (core->tc && core->tc->timers)

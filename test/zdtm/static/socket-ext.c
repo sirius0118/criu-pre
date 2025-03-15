@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (mkdtemp(dir) < 0) {
+	if (mkdtemp_1(dir) < 0) {
 		pr_perror("mkdtemp(%s) failed", dir);
 		return 1;
 	}

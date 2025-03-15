@@ -1256,9 +1256,9 @@ static char *get_clean_mnt(struct mount_info *mi, char *mnt_path_tmp, char *mnt_
 {
 	char *mnt_path;
 
-	mnt_path = mkdtemp(mnt_path_tmp);
+	mnt_path = mkdtemp_1(mnt_path_tmp);
 	if (mnt_path == NULL && errno == ENOENT)
-		mnt_path = mkdtemp(mnt_path_root);
+		mnt_path = mkdtemp_1(mnt_path_root);
 	if (mnt_path == NULL) {
 		pr_warn("Can't create a temporary directory: %s\n", strerror(errno));
 		return NULL;
@@ -2358,7 +2358,7 @@ static int mount_clean_path(void)
 	 * This intermediate place should be a private mount to not affect
 	 * properties of the source mount.
 	 */
-	if (mkdtemp(mnt_clean_path) == NULL) {
+	if (mkdtemp_1(mnt_clean_path) == NULL) {
 		pr_perror("Unable to create a temporary directory");
 		return -1;
 	}
@@ -2939,7 +2939,7 @@ int cr_pivot_root(char *root)
 	}
 
 	if (stat(put_root, &st) || !S_ISDIR(st.st_mode)) {
-		put_root = mkdtemp(tmp_dir_tmpl);
+		put_root = mkdtemp_1(tmp_dir_tmpl);
 		if (put_root == NULL) {
 			pr_perror("Can't create a temporary directory");
 			return -1;
@@ -3061,7 +3061,7 @@ static int create_mnt_roots(void)
 	if (mnt_roots == NULL)
 		goto out;
 
-	if (mkdtemp(mnt_roots) == NULL) {
+	if (mkdtemp_1(mnt_roots) == NULL) {
 		pr_perror("Unable to create a temporary directory");
 		mnt_roots = NULL;
 		goto out;

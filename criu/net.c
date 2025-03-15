@@ -2724,7 +2724,7 @@ static int mount_ns_sysfs(void)
 		return -1;
 	}
 
-	if (mkdtemp(sys_mount) == NULL) {
+	if (mkdtemp_1(sys_mount) == NULL) {
 		pr_perror("mkdtemp failed %s", sys_mount);
 		return -1;
 	}

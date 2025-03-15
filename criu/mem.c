@@ -35,6 +35,9 @@
 #include "protobuf.h"
 #include "images/pagemap.pb-c.h"
 
+extern long remain_mem;
+extern long all_mem;
+
 static int task_reset_dirty_track(int pid)
 {
 	int ret;
@@ -247,7 +250,8 @@ static int generate_iovs(struct pstree_item *item, struct vma_area *vma, struct 
 	cnt_add(CNT_PAGES_SKIPPED_PARENT, pages[0]);
 	cnt_add(CNT_PAGES_LAZY, pages[1]);
 	cnt_add(CNT_PAGES_WRITTEN, pages[2]);
-
+	remain_mem += pages[1];
+	all_mem += pages[0] + pages[1];
 	pr_info("Pagemap generated: %lu pages (%lu lazy) %lu holes\n", pages[2] + pages[1], pages[1], pages[0]);
 	return ret;
 }

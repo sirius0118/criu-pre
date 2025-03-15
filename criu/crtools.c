@@ -283,6 +283,7 @@ int main(int argc, char *argv[], char *envp[])
 		inherit_fd_log();
 	}
 
+	// 父文件夹的路径
 	if (opts.img_parent)
 		pr_info("Will do snapshot from %s\n", opts.img_parent);
 

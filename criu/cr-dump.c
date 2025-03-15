@@ -88,6 +88,14 @@
 #include "asm/dump.h"
 #include "timer.h"
 #include "sigact.h"
+#ifdef DOCKER
+#include "cr-sync.h"
+#include <string.h>
+extern long remain_mem;
+extern long all_mem;
+long remain_mem = 1;
+long all_mem = 1;
+#endif
 
 /*
  * Architectures can overwrite this function to restore register sets that
@@ -1916,6 +1924,9 @@ int cr_pre_dump_tasks(pid_t pid)
 	struct pstree_item *item;
 	int ret = -1;
 
+	pr_info("========================================\n");
+	pr_info("Pre-dump processes (pid: %d comm: %s)\n", pid, __task_comm_info(pid));
+	pr_info("========================================\n");
 	/*
 	 * We might need a lot of pipes to fetch huge number of pages to dump.
 	 */
@@ -2123,6 +2134,111 @@ int cr_dump_tasks(pid_t pid)
 	struct pstree_item *item;
 	int pre_dump_ret = 0;
 	int ret = -1;
+	int fork_pid = 0, status;
+#ifdef DOCKER
+	int pre_item = 0, item_i = 0, i;
+	
+	int sync_fd = 0;
+	int sync_fd_PC, sync_pretransfer;
+	char *contents;
+	// char sync_addr[50]="10.0.0.63";
+	// int sync_port=4567;
+	u32 cgidd;
+	FILE *fp;
+	char img_path[50];
+	char path[100];
+	char parent_path[100];
+#endif
+
+	if (kerndat_init())
+		return 1;
+	
+#ifdef DOCKER
+	log_set_loglevel(5);
+	if (log_init("/var/lib/criu/dump.log") == -1) {
+		pr_perror("Can't initiate log");
+		goto err;
+	}
+
+	pr_info("work_dir:%s, imgs_dir:%s\n", opts.work_dir, opts.imgs_dir);
+	sprintf(path, "%s/psroot", opts.imgs_dir);
+	fp = fopen(path, "w");
+	sprintf(img_path, "%s", opts.imgs_dir);
+	fprintf(fp, "%d\n", pid);
+	fclose(fp);
+	pr_info("Write psroot file.\n");
+	pr_info("Set sync server. Listening %s:%d\n", opts.sync_addr, opts.sync_port);
+
+	sync_fd = syncServerInit(opts.sync_addr, opts.sync_port);
+	if (sync_fd <= 0)
+		pr_err("Create sync server failed.\n");
+	else
+		pr_info("Create sync server successful.\n");
+	ret = install_service_fd(CRIU_SYNC_FD, sync_fd);
+
+#endif
+
+// TODO: 在这进行多次判断，如果上一轮dump的size < 第一轮size的 10%，那么就开始 final dump。如果次数超过了50轮，那么就直接报错
+// 1. 如何设置 prev-images-dir 文件夹的位置是个复杂的问题
+// 2. 所有文件夹如何正确的加载到restore端
+	opts.lazy_pages = false;
+	while(item_i++ < 5 && (double)remain_mem / (double)all_mem > 0.1){
+
+		pr_warn("开始第%d轮pre-dump, 剩余 %.2lf%%内存.\n", item_i, (double)remain_mem / (double)all_mem * 100);
+		remain_mem = 1; 
+		all_mem = 1;
+
+		if (item_i == 1){
+			opts.img_parent = NULL;
+			sprintf(path, "%s/images", img_path);
+			if(mkdir(path, 0555) < 0){
+				pr_err("Can not create parent images directory: %s.\n", path);
+			}
+			sprintf(path, "%s/images/pre%d", img_path, item_i);
+			if(mkdir(path, 0555) < 0){
+				pr_err("Can not create pre item images directory: %s.\n", path);
+			}
+			opts.imgs_dir = path;
+			if (open_image_dir(opts.imgs_dir, -1) < 0) {
+				pr_err("Can't open images directory");
+				goto err;
+			}
+		}
+		else{
+			sprintf(path, "%s/images/pre%d", img_path, item_i);
+			if(mkdir(path, 0555) < 0){
+				pr_err("Can not create pre item images directory: %s.\n", path);
+			}
+			opts.imgs_dir = path;
+			sprintf(parent_path, "../pre%d", item_i - 1);
+			opts.img_parent = parent_path;
+			if (open_image_dir(opts.imgs_dir, -1) < 0) {
+				pr_err("Can't open images directory");
+				goto err;
+			}
+		}
+		opts.track_mem = true;
+		opts.pre_dump_mode = PRE_DUMP_READ;
+
+		fork_pid = fork();
+		if (fork_pid == 0){
+			ret = cr_pre_dump_tasks(pid);
+			pr_warn("Predump proecess Done.\n");
+			exit(ret);
+		}
+
+		if (waitpid(fork_pid, &status, 0) != fork_pid) {
+			pr_perror("Unable to wait %d", fork_pid);
+			goto err;
+		}
+	}
+	opts.imgs_dir = img_path;
+	sprintf(parent_path, "./images/pre%d", item_i-1);
+	opts.img_parent = parent_path;
+	if (open_image_dir(opts.imgs_dir, -1) < 0) {
+		pr_err("Can't open images directory");
+		goto err;
+	}
 
 	pr_info("========================================\n");
 	pr_info("Dumping processes (pid: %d comm: %s)\n", pid, __task_comm_info(pid));
@@ -2188,6 +2304,9 @@ int cr_dump_tasks(pid_t pid)
 	 * thus ensuring that they don't modify anything we collect
 	 * afterwards.
 	 */
+	sprintf(path, "%s/stop", opts.imgs_dir);
+	fp = fopen(path, "w");
+	fclose(fp);
 
 	if (collect_pstree())
 		goto err;
@@ -2308,5 +2427,9 @@ err:
 	if (parent_ie)
 		inventory_entry__free_unpacked(parent_ie, NULL);
 
-	return cr_dump_finish(ret);
+	ret = cr_dump_finish(ret);
+
+	update_state(sync_fd, END_PROCESS_DUMP);
+	close(sync_fd);
+	return ret;
 }

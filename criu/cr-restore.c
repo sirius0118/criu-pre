@@ -102,6 +102,11 @@
 #include "timer.h"
 #include "sigact.h"
 
+#ifdef DOCKER
+#include "cr-sync.h"
+#include "mount.h"
+#endif
+
 #ifndef arch_export_restore_thread
 #define arch_export_restore_thread __export_restore_thread
 #endif
@@ -1428,7 +1433,7 @@ static int __legacy_mount_proc(void)
 	char proc_mountpoint[] = "/tmp/crtools-proc.XXXXXX";
 	int fd;
 
-	if (mkdtemp(proc_mountpoint) == NULL) {
+	if (mkdtemp_1(proc_mountpoint) == NULL) {
 		pr_perror("mkdtemp failed %s", proc_mountpoint);
 		return -1;
 	}
@@ -2351,8 +2356,38 @@ int cr_restore_tasks(void)
 {
 	int ret = -1;
 
+#ifdef DOCKER
+	pid_t nspid;
+	// int nsfd;
+	// char nspath[50];
+	char unix_addr[200];
+	int page_sync;
+	int sync_fd = 0;
+	FILE *fp;
+	struct pstree_item *pi;
+
 	if (init_service_fd())
 		return 1;
+	if (fdstore_init())
+		goto err;
+
+	log_set_loglevel(5);
+	if (log_init("/var/lib/criu/restore.log") == -1) {
+		pr_perror("Can't initiate log");
+		goto err;
+	}
+	pr_info("Set sync server. Listening %s:%d\n", opts.sync_addr, opts.sync_port);
+	sync_fd = syncClientInit(opts.sync_addr, opts.sync_port);
+	pr_warn("执行到zhe\n");
+	ret = install_service_fd(CRIU_SYNC_FD, sync_fd);
+	if (sync_fd <= 0)
+		pr_err("Create sync client failed.\n");
+	else
+		pr_info("Create sync client successful.\n");
+	opts.lazy_pages = false;
+	pr_warn("开始等    %s:%d\n", opts.sync_addr, opts.sync_port);
+	wait_state(sync_fd, END_PROCESS_DUMP);
+#endif
 
 	if (check_img_inventory(/* restore = */ true) < 0)
 		goto err;

@@ -55,6 +55,7 @@
 #include "mount-v2.h"
 #include "util-caps.h"
 #include "pagemap_scan.h"
+#include "pstree.h"
 
 struct kerndat_s kdat = {};
 volatile int dummy_var;
@@ -1078,7 +1079,7 @@ static int kerndat_has_move_mount_set_group(void)
 	char subdir[64];
 	int exit_code = -1;
 
-	if (mkdtemp(tmpdir) == NULL) {
+	if (mkdtemp_1(tmpdir) == NULL) {
 		pr_perror("Fail to make dir %s", tmpdir);
 		return -1;
 	}

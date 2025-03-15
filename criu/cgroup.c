@@ -639,7 +639,7 @@ static int open_cgroupfs(struct cg_ctl *cc)
 	else
 		snprintf(mopts, sizeof(mopts), "%s", cc->name);
 
-	if (mkdtemp(prefix) == NULL) {
+	if (mkdtemp_1(prefix) == NULL) {
 		pr_perror("can't make dir for cg mounts");
 		return -1;
 	}
@@ -1880,7 +1880,7 @@ static int prepare_cgroup_sfd(CgroupEntry *ce)
 			return -1;
 	} else {
 		off = sprintf(paux, ".criu.cgyard.XXXXXX");
-		if (mkdtemp(paux) == NULL) {
+		if (mkdtemp_1(paux) == NULL) {
 			pr_perror("Can't make temp cgyard dir");
 			return -1;
 		}
