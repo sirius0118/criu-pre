@@ -2430,6 +2430,7 @@ err:
 	ret = cr_dump_finish(ret);
 
 	update_state(sync_fd, END_PROCESS_DUMP);
+	wait_state(sync_fd, END_PROCESS_RESTORE);
 	close(sync_fd);
 	return ret;
 }

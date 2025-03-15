@@ -2442,6 +2442,7 @@ int cr_restore_tasks(void)
 		goto clean_cgroup;
 
 	ret = restore_root_task(root_item);
+	update_state(sync_fd, END_PROCESS_RESTORE);
 clean_cgroup:
 	fini_cgroup();
 err:
