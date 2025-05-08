@@ -1,1 +1,1 @@
-sock_ip_opts00.desc
+{'flags': 'suid', 'feature': 'ipv6_freebind'}

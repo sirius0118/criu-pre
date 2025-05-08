@@ -2154,7 +2154,7 @@ int cr_dump_tasks(pid_t pid)
 		return 1;
 	
 #ifdef DOCKER
-	log_set_loglevel(5);
+	log_set_loglevel(3);
 	if (log_init("/var/lib/criu/dump.log") == -1) {
 		pr_perror("Can't initiate log");
 		goto err;
@@ -2231,6 +2231,8 @@ int cr_dump_tasks(pid_t pid)
 			pr_perror("Unable to wait %d", fork_pid);
 			goto err;
 		}
+		// 睡眠一段时间模拟 pre-restore
+		sleep(5);
 	}
 	opts.imgs_dir = img_path;
 	sprintf(parent_path, "./images/pre%d", item_i-1);

@@ -1,1 +1,4 @@
-maps09.checkskip
+#!/bin/bash
+
+# will fail with EOPNOTSUPP
+cat /proc/sys/vm/nr_hugepages &> /dev/null
